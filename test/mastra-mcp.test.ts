@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa, JA_TERMS, sourceRef } from "../src/db.js";
+import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa, JA_TERMS, sourceRef, stemOf } from "../src/db.js";
 import { cleanMdx, ensureIndex, isStale, parseMdx, readGuides } from "../src/indexer.js";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -340,4 +340,24 @@ test("list_topics: sections overview, section pages, limit and unknown section",
   assert.match(bare, /reference\/workflows\/workflow/);
   assert.match((await call({ section: "workflows", limit: 1 })).content[0].text, /…2 more/);
   assert.equal((await call({ section: "nope" })).isError, true);
+});
+
+test("short stems match whole path tokens only; get_api_reference accepts Japanese", async () => {
+  assert.equal(stemOf("pgvector"), "pg");
+  assert.equal(stemOf("d1store"), "d1");
+  const page = (path: string, title: string, body = "body") => parseMdx(path, `---\ntitle: ${title}\n---\n${body}`);
+  const db = openDb(":memory:");
+  ensureIndex(db, () => [
+    page("reference/vectors/pg", "Reference: PG Vector"),
+    page("reference/rag/metadata-filters", "Reference: Metadata Filters", "## PgVector\nuses PgVector"),
+    page("docs/upgrade-guide", "Upgrade guide", "PgVector"),
+    page("reference/workflows/workflow", "Reference: Workflow class"),
+  ]);
+  assert.equal(referenceFor(db, "PgVector", 3)[0].path, "reference/vectors/pg");
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await createServer(db, async () => {}).connect(a);
+  const client = new Client({ name: "t", version: "0" });
+  await client.connect(b);
+  const r = (await client.callTool({ name: "get_api_reference", arguments: { symbol: "ワークフロー" } })) as { content: { text: string }[] };
+  assert.match(r.content[0].text, /reference\/workflows\/workflow/);
 });

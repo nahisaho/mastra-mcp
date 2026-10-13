@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
-import { type DocRow, findGuide, getDoc, listGuides, listPages, listSections, referenceFor, search, searchExamples } from "./db.js";
+import { type DocRow, findGuide, getDoc, listGuides, listPages, listSections, referenceFor, search, searchExamples, translateJa } from "./db.js";
 import { listInstalled, loadRegistry, lookupModels, readInstalled, searchInstalled, sourceMapFor } from "./local.js";
 
 const MAX_CHARS = 20000;
@@ -89,14 +89,15 @@ export function createServer(db: DatabaseSync, ready: () => Promise<unknown>): M
   server.registerTool(
     "get_api_reference",
     {
-      description: "Look up Mastra API reference (and integration) pages by class/function/method/backend name, e.g. 'Agent', 'createWorkflow', 'Memory', 'LibSQLStore'.",
+      description: "Look up Mastra API reference (and integration) pages by class/function/method/backend name, e.g. 'Agent', 'createWorkflow', 'Memory', 'LibSQLStore' (Japanese names such as 'ワークフロー' are translated).",
       inputSchema: {
         symbol: z.string().min(1).max(100),
         max_chars: z.number().int().min(1000).max(MAX_CHARS).default(8000),
       },
     },
-    async ({ symbol, max_chars }) => {
+    async ({ symbol: given, max_chars }) => {
       await ready();
+      const symbol = translateJa(given).trim() || given;
       let rows = referenceFor(db, symbol, 3);
       if (!rows.length) {
         rows = search(db, symbol, "reference", 3).flatMap((h) => getDoc(db, h.path) ?? []);

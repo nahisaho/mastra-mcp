@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { openDb, referenceFor, search, searchExamples } from "../src/db.js";
+import { openDb, referenceFor, search, searchExamples, translateJa } from "../src/db.js";
 import { ensureIndex, parseMdx } from "../src/indexer.js";
 
 // Golden ranking checks over real Mastra doc pages (test/fixtures/docs-subset.json).
@@ -26,7 +26,7 @@ ensureIndex(db, () => pages.map((p) => parseMdx(p.path, p.raw)));
 function run(g: Golden): string[] {
   switch (g.tool) {
     case "api":
-      return referenceFor(db, g.query, 3).map((r) => r.path);
+      return referenceFor(db, translateJa(g.query), 3).map((r) => r.path);
     case "search":
       return search(db, g.query, undefined, 5).map((h) => h.path);
     case "guide":

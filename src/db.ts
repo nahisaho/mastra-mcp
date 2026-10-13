@@ -289,8 +289,12 @@ export function cleanTitle(title: string): string {
 // "LibSQLStore" -> "libsql": drop generic suffixes so integration pages named after the backend match.
 export function stemOf(n: string): string {
   const stem = n.replace(/(store|storage|client|provider|adapter|class|vector)+$/, "");
-  return stem.length >= 4 && stem !== n ? stem : "";
+  return stem.length >= 2 && stem !== n ? stem : "";
 }
+
+// Stems under 4 chars (pg, d1) only count as whole path tokens, never as substrings (pg vs upgrade).
+const SHORT_STEM = 4;
+const lastTokens = (path: string) => (path.split("/").pop() ?? "").toLowerCase().split("-");
 
 export function scoreReference(d: DocRow, symbol: string): number {
   const sym = symbol.trim().toLowerCase();
@@ -300,7 +304,12 @@ export function scoreReference(d: DocRow, symbol: string): number {
   const factory = n.match(/^(?:create|new|get)(.{3,})$/)?.[1];
   const stem = stemOf(n);
   let score = d.kind === "reference" ? 5 : 0;
-  if (stem && (name === stem || lastNorm === stem)) score += 75;
+  const short = stem.length > 0 && stem.length < SHORT_STEM;
+  if (short) {
+    if (lastNorm === stem) score += 75;
+    else if (lastTokens(d.path).includes(stem)) score += 70;
+    if (score > 5 && /vector$/.test(n) && d.path.includes("/vectors/")) score += 40;
+  } else if (stem && (name === stem || lastNorm === stem)) score += 75;
   else if (stem && (name.includes(stem) || lastNorm.includes(stem))) {
     // Prefer pages whose name is mostly the stem (postgresql over neon-postgres).
     const shortest = Math.min(...[name, lastNorm].filter((x) => x.includes(stem)).map((x) => x.length));
@@ -341,6 +350,7 @@ export function referenceFor(db: DatabaseSync, symbol: string, limit: number): D
   const stemRows = stem
     ? (db.prepare("SELECT * FROM docs WHERE lower(replace(path,'-','')) LIKE ?").all(`%${esc(stem)}%`) as unknown as DocRow[])
     : [];
+  // For short stems the SQL pre-filter is loose; scoreReference only credits whole path tokens.
   const seen = new Set<string>();
   return [...rows, ...extra, ...fac, ...stemRows]
     .filter((r) => r.kind !== "guide" && !seen.has(r.path) && seen.add(r.path))
