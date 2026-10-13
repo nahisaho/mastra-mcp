@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa, JA_TERMS } from "../src/db.js";
+import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa, JA_TERMS, sourceRef } from "../src/db.js";
 import { cleanMdx, ensureIndex, isStale, parseMdx, readGuides } from "../src/indexer.js";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { compareNewest, lookupModels, readInstalled, searchInstalled } from "../src/local.js";
 import { createServer } from "../src/server.js";
 import { runCommand, statusText } from "../src/cli.js";
+import { detectInstalledVersion, resolveVersion, tagFor } from "../src/version.js";
 
 const rows = [
   parseMdx("docs/agents/overview", '---\ntitle: "Agents"\ndescription: "Build agents"\n---\n# Agents\nUse the Agent class with tools.'),
@@ -236,7 +237,7 @@ test("ensureIndex force refreshes a fresh index", () => {
 test("CLI: statusText and unknown command exit code", () => {
   const dir = mkdtempSync(join(tmpdir(), "mm-cli-"));
   const file = join(dir, "i.db");
-  assert.match(statusText(file), /documents: 0\nindexed: never/);
+  assert.match(statusText(file), /documents: 0\nsource: none\nindexed: never/);
   const err = console.error;
   console.error = () => {};
   try {
@@ -281,4 +282,34 @@ test("Japanese dictionary: >= 1000 terms, no single-character keys, longest matc
   assert.equal(t("プログラマ"), "プログラマ");
   assert.equal(t("コードレビュー"), "code review");
   assert.equal(t("人間参加のワークフロー再開"), "human in the loop resume workflow");
+});
+
+test("version: resolve from env, installed @mastra/core, or latest", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-ver-"));
+  assert.equal(resolveVersion(undefined, dir), null);
+  mkdirSync(join(dir, "node_modules", "@mastra", "core"), { recursive: true });
+  writeFileSync(join(dir, "node_modules", "@mastra", "core", "package.json"), JSON.stringify({ version: "1.70.2" }));
+  assert.equal(detectInstalledVersion(dir), "1.70.2");
+  assert.equal(resolveVersion(undefined, dir), "1.70.2");
+  assert.equal(resolveVersion("auto", dir), "1.70.2");
+  assert.equal(resolveVersion("latest", dir), null);
+  assert.equal(resolveVersion("v1.50.0", dir), "1.50.0");
+  assert.throws(() => resolveVersion("1.x", dir), /Invalid MASTRA_MCP_VERSION/);
+  assert.equal(tagFor("1.50.0"), "@mastra/core@1.50.0");
+});
+
+test("ensureIndex: pinned index is never stale, records source ref, mismatch refetches", () => {
+  const db = openDb(":memory:");
+  const rows = [parseMdx("docs/a", "---\ntitle: A\n---\nbody")];
+  let calls = 0;
+  const fetcher = () => (calls++, { rows, ref: "@mastra/core@1.50.0" });
+  assert.equal(ensureIndex(db, fetcher, false, "1.50.0").refreshed, true);
+  assert.equal(sourceRef(db), "@mastra/core@1.50.0");
+  db.prepare("UPDATE meta SET value='0' WHERE key='indexed_at'").run();
+  assert.equal(ensureIndex(db, fetcher, false, "1.50.0").refreshed, false);
+  assert.equal(ensureIndex(db, fetcher, false, "1.51.0").refreshed, true);
+  const latest = () => (calls++, { rows, ref: "main" });
+  assert.equal(ensureIndex(db, latest, false, null).refreshed, true);
+  assert.equal(ensureIndex(db, latest, false, null).refreshed, false);
+  assert.equal(calls, 3);
 });

@@ -48,7 +48,7 @@ export function openDb(file: string): DatabaseSync {
   return db;
 }
 
-export function replaceAll(db: DatabaseSync, rows: DocRow[]): void {
+export function replaceAll(db: DatabaseSync, rows: DocRow[], ref = "main"): void {
   db.exec("BEGIN");
   try {
     db.exec("DELETE FROM docs; DELETE FROM docs_fts; DELETE FROM examples_fts;");
@@ -61,6 +61,7 @@ export function replaceAll(db: DatabaseSync, rows: DocRow[]): void {
       for (const e of extractExamples(r.body, r.title)) ex.run(r.path, r.kind, e.lang, e.heading, e.code);
     }
     db.prepare("INSERT OR REPLACE INTO meta VALUES ('indexed_at', ?)").run(String(Date.now()));
+    db.prepare("INSERT OR REPLACE INTO meta VALUES ('source_ref', ?)").run(ref);
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
@@ -71,6 +72,11 @@ export function replaceAll(db: DatabaseSync, rows: DocRow[]): void {
 export function indexedAt(db: DatabaseSync): number | null {
   const r = db.prepare("SELECT value FROM meta WHERE key='indexed_at'").get() as { value: string } | undefined;
   return r ? Number(r.value) : null;
+}
+
+export function sourceRef(db: DatabaseSync): string | null {
+  const r = db.prepare("SELECT value FROM meta WHERE key='source_ref'").get() as { value: string } | undefined;
+  return r ? r.value : null;
 }
 
 export function docCount(db: DatabaseSync): number {

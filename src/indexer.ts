@@ -3,7 +3,8 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:f
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
-import { type DocRow, indexedAt, replaceAll } from "./db.js";
+import { type DocRow, indexedAt, replaceAll, sourceRef } from "./db.js";
+import { tagFor } from "./version.js";
 
 const REPO = "https://github.com/mastra-ai/mastra";
 const SKILLS_REPO = "https://github.com/mastra-ai/skills";
@@ -91,11 +92,11 @@ export function readDocs(contentDir: string): DocRow[] {
   });
 }
 
-function sparseClone(repo: string, subdir: string): { dir: string; cleanup: () => void } {
+function sparseClone(repo: string, subdir: string, ref?: string): { dir: string; cleanup: () => void } {
   const tmp = mkdtempSync(join(tmpdir(), "mastra-docs-"));
   const run = (cwd: string, ...a: string[]) => execFileSync("git", a, { cwd, stdio: "pipe" });
   try {
-    run(tmp, "clone", "--depth", "1", "--filter=blob:none", "--sparse", repo, "repo");
+    run(tmp, "clone", "--depth", "1", "--filter=blob:none", "--sparse", ...(ref ? ["--branch", ref] : []), repo, "repo");
     const cwd = join(tmp, "repo");
     run(cwd, "sparse-checkout", "set", subdir);
     return { dir: join(cwd, subdir), cleanup: () => rmSync(tmp, { recursive: true, force: true }) };
@@ -117,8 +118,25 @@ export function readGuides(skillsDir: string): DocRow[] {
   return rows;
 }
 
-export function fetchDocs(): DocRow[] {
-  const docs = sparseClone(REPO, CONTENT);
+export interface Fetched {
+  rows: DocRow[];
+  ref: string;
+}
+
+// With a version, docs come from the matching release tag; a missing tag falls back to the default branch.
+export function fetchDocs(version: string | null = null): Fetched {
+  let ref = "main";
+  let docs: ReturnType<typeof sparseClone>;
+  if (version) {
+    try {
+      docs = sparseClone(REPO, CONTENT, tagFor(version));
+      ref = tagFor(version);
+    } catch {
+      console.error(`[mastra-mcp] tag ${tagFor(version)} not found; using latest docs`);
+      ref = `main (fallback: ${tagFor(version)} not found)`;
+      docs = sparseClone(REPO, CONTENT);
+    }
+  } else docs = sparseClone(REPO, CONTENT);
   let rows: DocRow[];
   try {
     rows = readDocs(docs.dir);
@@ -134,7 +152,7 @@ export function fetchDocs(): DocRow[] {
       skills.cleanup();
     }
   } catch {}
-  return rows;
+  return { rows, ref };
 }
 
 export function isStale(db: DatabaseSync, now = Date.now()): boolean {
@@ -142,13 +160,22 @@ export function isStale(db: DatabaseSync, now = Date.now()): boolean {
   return at === null || now - at > TTL_MS;
 }
 
-// Refreshes the index when missing or older than 24h. A failed refresh keeps the old index.
-export function ensureIndex(db: DatabaseSync, fetcher: () => DocRow[] = fetchDocs, force = false): { refreshed: boolean; error?: string } {
-  if (!force && !isStale(db)) return { refreshed: false };
+// Refreshes the index when missing or older than 24h. Release-pinned indexes never go stale. A failed refresh keeps the old index.
+export function ensureIndex(
+  db: DatabaseSync,
+  fetcher: () => DocRow[] | Fetched = () => fetchDocs(version),
+  force = false,
+  version: string | null = null,
+): { refreshed: boolean; error?: string } {
+  const ref = sourceRef(db);
+  const pinned = version !== null && indexedAt(db) !== null && ref === tagFor(version);
+  const otherTag = ref !== null && ref.startsWith("@mastra/core@") && ref !== (version && tagFor(version));
+  if (!force && !otherTag && (pinned || !isStale(db))) return { refreshed: false };
   try {
-    const rows = fetcher();
+    const f = fetcher();
+    const { rows, ref: newRef } = Array.isArray(f) ? { rows: f, ref: "main" } : f;
     if (rows.length === 0) throw new Error("no documents found");
-    replaceAll(db, rows);
+    replaceAll(db, rows, newRef);
     return { refreshed: true };
   } catch (e) {
     return { refreshed: false, error: e instanceof Error ? e.message : String(e) };

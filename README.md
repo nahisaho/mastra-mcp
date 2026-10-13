@@ -26,6 +26,10 @@ From a local checkout (`npm install && npm run build`), use `{ "command": "node"
 
 `search_docs` / `search_examples` accept Japanese queries (e.g. `ワークフローを中断して再開する方法`). Known terms are translated to English via a built-in dictionary of 1,000+ terms (`src/ja-terms.ts`, `JA_TERMS` in `src/db.ts`; longest match wins); unknown Japanese is dropped.
 
+## Version-pinned docs
+
+By default the docs match the `@mastra/core` installed in the server's working directory (`node_modules/@mastra/core`); without one, the latest docs are used. Override with `MASTRA_MCP_VERSION`: `auto` (default), `latest`, or an exact release such as `1.70.0`. Docs are fetched from the git tag `@mastra/core@<version>`, cached per version in `index-<version>.db`, and never expire. If the tag does not exist, the latest docs are used instead (`mastra-mcp status` shows the `source`).
+
 ## CLI
 
 ```sh

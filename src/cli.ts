@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { docCount, indexedAt, openDb } from "./db.js";
+import { docCount, indexedAt, openDb, sourceRef } from "./db.js";
 import { ensureIndex } from "./indexer.js";
+import { resolveVersion } from "./version.js";
 
 export const HELP = `mastra-mcp: MCP server for Mastra docs (stdio)
 
@@ -12,10 +13,17 @@ Usage:
   mastra-mcp status     Show index location, size and age
   mastra-mcp --version | --help
 
-Env: MASTRA_MCP_DB (index file, default ~/.cache/mastra-mcp/index.db)`;
+Env:
+  MASTRA_MCP_DB       Index file (default ~/.cache/mastra-mcp/index.db; pinned versions use index-<version>.db)
+  MASTRA_MCP_VERSION  auto (default: installed @mastra/core in cwd), latest, or x.y.z to pin the docs release`;
 
-export function dbPath(): string {
-  return process.env.MASTRA_MCP_DB ?? join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "mastra-mcp", "index.db");
+export function targetVersion(): string | null {
+  return resolveVersion(process.env.MASTRA_MCP_VERSION, process.cwd());
+}
+
+export function dbPath(version: string | null = targetVersion()): string {
+  const dir = join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "mastra-mcp");
+  return process.env.MASTRA_MCP_DB ?? join(dir, version ? `index-${version}.db` : "index.db");
 }
 
 export function version(): string {
@@ -26,7 +34,7 @@ export function statusText(file: string): string {
   const db = openDb(file);
   const at = indexedAt(db);
   const age = at ? `${new Date(at).toISOString()} (${((Date.now() - at) / 3600000).toFixed(1)}h ago)` : "never";
-  return ["index: " + file, "documents: " + docCount(db), "indexed: " + age].join("\n");
+  return ["index: " + file, "documents: " + docCount(db), "source: " + (sourceRef(db) ?? "none"), "indexed: " + age].join("\n");
 }
 
 // Returns a process exit code; prints to stdout/stderr.
@@ -46,7 +54,7 @@ export function runCommand(cmd: string, file: string): number {
   if (cmd === "refresh") {
     const db = openDb(file);
     const t0 = Date.now();
-    const r = ensureIndex(db, undefined, true);
+    const r = ensureIndex(db, undefined, true, targetVersion());
     if (r.error) {
       console.error("refresh failed (previous index kept): " + r.error);
       return 1;
