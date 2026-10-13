@@ -255,3 +255,11 @@ test("translateJa: maps known terms, prefers longer terms, drops unknown Japanes
   assert.equal(t("createWorkflow"), "createWorkflow");
   assert.equal(t("あいう"), "あいう");
 });
+
+test("translateJa: covers docs topics", () => {
+  const t = (q: string) => translateJa(q).split(/\s+/).filter(Boolean).join(" ");
+  assert.equal(t("サンドボックスのファイルシステム"), "sandbox filesystem");
+  assert.equal(t("マルチエージェントの委譲"), "multi-agent delegation");
+  assert.equal(t("ゲートウェイとプロバイダー"), "gateway provider");
+  assert.equal(t("エラー処理とタイムアウト"), "error handling timeout");
+});
