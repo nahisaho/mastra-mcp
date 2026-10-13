@@ -263,3 +263,11 @@ test("translateJa: covers docs topics", () => {
   assert.equal(t("ゲートウェイとプロバイダー"), "gateway provider");
   assert.equal(t("エラー処理とタイムアウト"), "error handling timeout");
 });
+
+test("translateJa: reference areas and generic verbs", () => {
+  const t = (q: string) => translateJa(q).split(/\s+/).filter(Boolean).join(" ");
+  assert.equal(t("ワーカーのライフサイクルフック"), "workers lifecycle hooks");
+  assert.equal(t("ベクターストアのメタデータを取得"), "vector store metadata");
+  assert.equal(t("ツール呼び出しの最大ステップ"), "tool calling max steps");
+  assert.equal(t("レート制限"), "rate limit");
+});
