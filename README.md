@@ -40,6 +40,15 @@ mastra-mcp status     # index path, document count, age
 mastra-mcp --version
 ```
 
+## Container
+
+```sh
+docker build -t mastra-mcp .          # or: wslc build -t mastra-mcp .
+docker run -i --rm -v mastra-mcp-data:/data mastra-mcp
+```
+
+MCP over stdio needs `-i` and no TTY. The `/data` volume caches the docs index (built on first start; needs network access to GitHub). MCP client config: `{"command": "docker", "args": ["run", "-i", "--rm", "-v", "mastra-mcp-data:/data", "mastra-mcp"]}` (use `wslc` instead of `docker` on WSL).
+
 ## Development
 
 ```sh
