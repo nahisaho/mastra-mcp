@@ -15,5 +15,7 @@
   { "tool": "examples", "query": "createTool", "lang": "ts", "first": "reference/tools/create-tool" },
   { "tool": "examples", "query": "Memory working memory", "lang": "ts", "first": "docs/memory/working-memory" },
   { "tool": "examples", "query": "workflow suspend resume", "lang": "ts", "includes": ["docs/workflows/suspend-and-resume"], "top": 3 },
+  { "tool": "search", "query": "ワークフローを中断して再開する方法", "includes": ["docs/workflows/suspend-and-resume"], "top": 3 },
+  { "tool": "search", "query": "ツールを作成する", "includes": ["docs/agents/tools"], "top": 5 },
   { "tool": "guide", "query": "Cannot find module Property does not exist", "first": "guides/mastra/common-errors" }
 ]

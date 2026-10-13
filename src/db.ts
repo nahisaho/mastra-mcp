@@ -78,7 +78,34 @@ export function docCount(db: DatabaseSync): number {
 
 const STOP = new Set(["the", "a", "an", "to", "of", "in", "on", "for", "and", "or", "with", "how", "do", "i", "is", "are", "use", "using"]);
 
+// Japanese -> English term map; the docs are English-only, so known terms are translated and other Japanese is dropped.
+const JA_TERMS: Record<string, string> = {
+  ワークフロー: "workflow", エージェント: "agent", メモリー: "memory", メモリ: "memory", ツール: "tool",
+  評価: "evals", スコアラー: "scorer", 認証: "auth", 認可: "authorization", ストリーミング: "streaming",
+  ストリーム: "stream", 再開: "resume", 中断: "suspend", 一時停止: "suspend", 承認: "approval",
+  ベクトル: "vector", 検索: "search", ストレージ: "storage", データベース: "database", デプロイ: "deploy",
+  ネットワーク: "network", サーバー: "server", ミドルウェア: "middleware", モデル: "model", プロンプト: "prompt",
+  指示: "instructions", 構造化出力: "structured output", 出力: "output", 入力: "input", 型: "schema",
+  スキーマ: "schema", トレース: "tracing", 可観測性: "observability", ログ: "logging", 音声: "voice",
+  テスト: "testing", エラー: "error", 設定: "configuration", 作成: "create", 実行: "run",
+  並列: "parallel", 分岐: "branch", ループ: "loop", 待機: "sleep", 人間: "human", 介入: "human in the loop",
+  ガードレール: "processors", プロセッサー: "processors", 運用: "production", 環境変数: "environment variables",
+  使い方: "", 方法: "", 実装: "", 作り方: "",
+};
+const JA_KEYS = Object.keys(JA_TERMS).sort((a, b) => b.length - a.length);
+const JA_RUN = /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]+/gu;
+
+export function translateJa(q: string): string {
+  if (!JA_RUN.test(q)) return q;
+  JA_RUN.lastIndex = 0;
+  let out = q;
+  for (const k of JA_KEYS) out = out.split(k).join(` ${JA_TERMS[k]} `);
+  const stripped = out.replace(JA_RUN, " ").replace(/\s+/g, " ").trim();
+  return stripped || q;
+}
+
 export function toFtsQuery(q: string, joiner: "OR" | "AND" = "OR"): string {
+  q = translateJa(q);
   const all = q.match(/[\p{L}\p{N}_]+/gu) ?? [];
   const kept = all.filter((t) => !STOP.has(t.toLowerCase()));
   return (kept.length ? kept : all).map((t) => `"${t}"`).join(` ${joiner} `);
@@ -121,7 +148,7 @@ export interface ExampleHit {
   code: string;
 }
 
-const termsOf = (q: string) => (q.match(/[\p{L}\p{N}_]+/gu) ?? []).filter((t) => !STOP.has(t.toLowerCase()));
+const termsOf = (q: string) => (translateJa(q).match(/[\p{L}\p{N}_]+/gu) ?? []).filter((t) => !STOP.has(t.toLowerCase()));
 
 // FTS finds candidates; re-ranking favours exact identifiers, heading matches, short snippets and primary docs.
 export function searchExamples(db: DatabaseSync, query: string, lang: string | undefined, limit: number): ExampleHit[] {
