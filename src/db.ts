@@ -90,7 +90,21 @@ const JA_TERMS: Record<string, string> = {
   テスト: "testing", エラー: "error", 設定: "configuration", 作成: "create", 実行: "run",
   並列: "parallel", 分岐: "branch", ループ: "loop", 待機: "sleep", 人間: "human", 介入: "human in the loop",
   ガードレール: "processors", プロセッサー: "processors", 運用: "production", 環境変数: "environment variables",
-  使い方: "", 方法: "", 実装: "", 作り方: "",
+  使い方: "", 方法: "", 実装: "", 作り方: "", 手順: "", とは: "",
+  エージェントネットワーク: "agent network", ワーキングメモリ: "working memory", セマンティックリコール: "semantic recall",
+  会話履歴: "message history", 履歴: "history", スレッド: "thread", リソース: "resource",
+  サブエージェント: "subagent", スーパーバイザー: "supervisor", 委譲: "delegation",
+  ツール呼び出し: "tool calling", ツールコール: "tool calling", ログイン: "login",
+  チャンク: "chunking", 埋め込み: "embeddings", リランキング: "rerank", ドキュメント: "document",
+  ステップ: "step", トリガー: "trigger", イベント: "event", 条件: "condition", ネスト: "nested workflow", 入れ子: "nested workflow",
+  スケジュール: "schedule", バックグラウンド: "background", キャッシュ: "cache", リトライ: "retry", 再試行: "retry",
+  タイムアウト: "timeout", デバッグ: "debug", 開発: "development", 本番: "production", 移行: "migration",
+  アップグレード: "upgrade", インストール: "installation", 導入: "getting started", 始め方: "getting started",
+  クイックスタート: "quickstart", 権限: "permissions", ロール: "role", スコア: "score", 監視: "monitoring",
+  ルート: "routes", サーバーレス: "serverless", クライアント: "client", テンプレート: "template",
+  連携: "integration", 統合: "integration", ファイル: "file", 画像: "image", コンテキスト: "context",
+  リクエスト: "request", 型安全: "type safety", 例: "examples", サンプル: "examples",
+  ガードレール安全: "guardrails", 入力検証: "input validation", 動的: "dynamic", 共有: "shared",
 };
 const JA_KEYS = Object.keys(JA_TERMS).sort((a, b) => b.length - a.length);
 const JA_RUN = /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]+/gu;

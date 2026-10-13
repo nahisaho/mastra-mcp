@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery } from "../src/db.js";
+import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa } from "../src/db.js";
 import { cleanMdx, ensureIndex, isStale, parseMdx, readGuides } from "../src/indexer.js";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -244,4 +244,14 @@ test("CLI: statusText and unknown command exit code", () => {
   } finally {
     console.error = err;
   }
+});
+
+test("translateJa: maps known terms, prefers longer terms, drops unknown Japanese", () => {
+  const t = (q: string) => translateJa(q).split(/\s+/).filter(Boolean).join(" ");
+  assert.equal(t("ワーキングメモリの使い方"), "working memory");
+  assert.equal(t("ツール呼び出しを実装"), "tool calling");
+  assert.equal(t("エージェントネットワークを構築"), "agent network");
+  assert.equal(t("RAGのチャンク分割"), "RAG chunking");
+  assert.equal(t("createWorkflow"), "createWorkflow");
+  assert.equal(t("あいう"), "あいう");
 });
