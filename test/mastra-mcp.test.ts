@@ -361,3 +361,12 @@ test("short stems match whole path tokens only; get_api_reference accepts Japane
   const r = (await client.callTool({ name: "get_api_reference", arguments: { symbol: "ワークフロー" } })) as { content: { text: string }[] };
   assert.match(r.content[0].text, /reference\/workflows\/workflow/);
 });
+
+test("server reports the package.json version", async () => {
+  const pkg = JSON.parse((await import("node:fs")).readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await createServer(openDb(":memory:"), async () => {}).connect(a);
+  const client = new Client({ name: "t", version: "0" });
+  await client.connect(b);
+  assert.equal(client.getServerVersion()?.version, pkg.version);
+});

@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { docCount, indexedAt, openDb, sourceRef } from "./db.js";
 import { ensureIndex } from "./indexer.js";
 import { resolveVersion } from "./version.js";
@@ -27,7 +28,12 @@ export function dbPath(version: string | null = targetVersion()): string {
 }
 
 export function version(): string {
-  return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+  // dist/ and the test build (.build/src/) sit at different depths, so search upwards.
+  for (let dir = dirname(fileURLToPath(import.meta.url)); ; dir = dirname(dir)) {
+    const file = join(dir, "package.json");
+    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8")).version;
+    if (dirname(dir) === dir) return "unknown";
+  }
 }
 
 export function statusText(file: string): string {

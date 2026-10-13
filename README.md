@@ -11,7 +11,7 @@ MCP server (like Context7) that gives coding agents up-to-date [Mastra](https://
   - `lookup_model`: verify providers and model names from the installed `@mastra/core` provider registry.
 - The server `instructions` carry the Mastra skill's guidance (verify docs, installed docs first, `provider/model` format). Based on [mastra-ai/skills](https://github.com/mastra-ai/skills).
 - On first start it sparse-clones the skills repo too and sparse-clones `docs/src/content/en` from `mastra-ai/mastra` (needs `git`), indexes it in SQLite FTS5 and refreshes every 24h. If a refresh fails, the old index is kept.
-- Requires Node.js >= 22.5 and `git`. Index location: `~/.cache/mastra-mcp/index.db` (override with `MASTRA_MCP_DB`).
+- Requires Node.js >= 22.13 and `git`. Index location: `~/.cache/mastra-mcp/index.db` (override with `MASTRA_MCP_DB`).
 
 ## Usage
 
@@ -25,7 +25,7 @@ From a local checkout (`npm install && npm run build`), use `{ "command": "node"
 
 ## Japanese queries
 
-`search_docs` / `search_examples` accept Japanese queries (e.g. `ワークフローを中断して再開する方法`). Known terms are translated to English via a built-in dictionary of 1,000+ terms (`src/ja-terms.ts`, `JA_TERMS` in `src/db.ts`; longest match wins); unknown Japanese is dropped.
+`search_docs`, `search_examples` and `get_api_reference` accept Japanese queries (e.g. `ワークフローを中断して再開する方法`). Known terms are translated to English via a built-in dictionary of 1,000+ terms (`src/ja-terms.ts`, `JA_TERMS` in `src/db.ts`; longest match wins); unknown Japanese is dropped.
 
 ## Version-pinned docs
 

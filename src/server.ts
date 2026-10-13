@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
+import { version } from "./cli.js";
 import { type DocRow, findGuide, getDoc, listGuides, listPages, listSections, referenceFor, search, searchExamples, translateJa } from "./db.js";
 import { listInstalled, loadRegistry, lookupModels, readInstalled, searchInstalled, sourceMapFor } from "./local.js";
 
@@ -23,7 +24,7 @@ const INSTRUCTIONS = [
 ].join("\n");
 
 export function createServer(db: DatabaseSync, ready: () => Promise<unknown>): McpServer {
-  const server = new McpServer({ name: "mastra-mcp", version: "0.1.0" }, { instructions: INSTRUCTIONS });
+  const server = new McpServer({ name: "mastra-mcp", version: version() }, { instructions: INSTRUCTIONS });
 
   server.registerTool(
     "search_docs",
