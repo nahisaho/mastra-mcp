@@ -33,6 +33,11 @@ export function openDb(file: string): DatabaseSync {
     db.exec("DROP TABLE IF EXISTS meta; DROP TABLE IF EXISTS docs; DROP TABLE IF EXISTS docs_fts; DROP TABLE IF EXISTS examples_fts;");
     db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   }
+  try {
+    db.exec("CREATE VIRTUAL TABLE temp.fts5_probe USING fts5(x); DROP TABLE temp.fts5_probe;");
+  } catch {
+    throw new Error(`This Node.js (${process.version}) bundles SQLite without FTS5; mastra-mcp needs Node.js >= 22.16.`);
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
     CREATE TABLE IF NOT EXISTS docs (

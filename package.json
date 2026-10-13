@@ -34,7 +34,7 @@
     "mastra-mcp": "dist/index.js"
   },
   "engines": {
-    "node": ">=22.14"
+    "node": ">=22.16"
   },
   "files": [
     "dist",

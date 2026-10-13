@@ -11,7 +11,7 @@ MCP server (like Context7) that gives coding agents up-to-date [Mastra](https://
   - `lookup_model`: verify providers and model names from the installed `@mastra/core` provider registry.
 - The server `instructions` carry the Mastra skill's guidance (verify docs, installed docs first, `provider/model` format). Based on [mastra-ai/skills](https://github.com/mastra-ai/skills).
 - On first start it sparse-clones the skills repo too and sparse-clones `docs/src/content/en` from `mastra-ai/mastra` (needs `git`), indexes it in SQLite FTS5 and refreshes every 24h. If a refresh fails, the old index is kept.
-- Requires Node.js >= 22.14 and `git`. Index location: `~/.cache/mastra-mcp/index.db` (override with `MASTRA_MCP_DB`).
+- Requires Node.js >= 22.16 and `git`. Index location: `~/.cache/mastra-mcp/index.db` (override with `MASTRA_MCP_DB`).
 
 ## Usage
 
