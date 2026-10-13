@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { extractExamples } from "./examples.js";
+import { JA_TERMS_EXTRA } from "./ja-terms.js";
 
 export interface DocRow {
   path: string;
@@ -79,13 +80,14 @@ export function docCount(db: DatabaseSync): number {
 const STOP = new Set(["the", "a", "an", "to", "of", "in", "on", "for", "and", "or", "with", "how", "do", "i", "is", "are", "use", "using"]);
 
 // Japanese -> English term map; the docs are English-only, so known terms are translated and other Japanese is dropped.
-const JA_TERMS: Record<string, string> = {
+export const JA_TERMS: Record<string, string> = {
+  ...JA_TERMS_EXTRA,
   ワークフロー: "workflow", エージェント: "agent", メモリー: "memory", メモリ: "memory", ツール: "tool",
   評価: "evals", スコアラー: "scorer", 認証: "auth", 認可: "authorization", ストリーミング: "streaming",
   ストリーム: "stream", 再開: "resume", 中断: "suspend", 一時停止: "suspend", 承認: "approval",
   ベクトル: "vector", 検索: "search", ストレージ: "storage", データベース: "database", デプロイ: "deploy",
   ネットワーク: "network", サーバー: "server", ミドルウェア: "middleware", モデル: "model", プロンプト: "prompt",
-  指示: "instructions", 構造化出力: "structured output", 出力: "output", 入力: "input", 型: "schema",
+  指示: "instructions", 構造化出力: "structured output", 出力: "output", 入力: "input",
   スキーマ: "schema", トレース: "tracing", 可観測性: "observability", ログ: "logging", 音声: "voice",
   テスト: "testing", エラー: "error", 設定: "configuration", 作成: "create", 実行: "run",
   並列: "parallel", 分岐: "branch", ループ: "loop", 待機: "sleep", 人間: "human", 介入: "human in the loop",
@@ -103,7 +105,7 @@ const JA_TERMS: Record<string, string> = {
   クイックスタート: "quickstart", 権限: "permissions", ロール: "role", スコア: "score", 監視: "monitoring",
   ルート: "routes", サーバーレス: "serverless", クライアント: "client", テンプレート: "template",
   連携: "integration", 統合: "integration", ファイル: "file", 画像: "image", コンテキスト: "context",
-  リクエスト: "request", 型安全: "type safety", 例: "examples", サンプル: "examples",
+  リクエスト: "request", 型安全: "type safety", サンプル: "examples",
   ガードレール安全: "guardrails", 入力検証: "input validation", 動的: "dynamic", 共有: "shared",
   ガードレール: "guardrails processors", コードモード: "code mode", 観察メモリ: "observational memory",
   マルチユーザー: "multi-user threads", 複数エージェント: "multi-agent", マルチエージェント: "multi-agent",
@@ -143,14 +145,30 @@ const JA_TERMS: Record<string, string> = {
   グラフ: "graph", ナレッジ: "knowledge", 知識: "knowledge", 文脈: "context", 履歴管理: "message history",
   永続化: "persistence", 復元: "restore", 再実行: "replay", 巻き戻し: "time travel", 分析: "analysis",
 };
-const JA_KEYS = Object.keys(JA_TERMS).sort((a, b) => b.length - a.length);
+const JA_BY_FIRST = new Map<string, string[]>();
+for (const k of Object.keys(JA_TERMS).sort((a, b) => b.length - a.length)) {
+  const c = k[0];
+  JA_BY_FIRST.set(c, [...(JA_BY_FIRST.get(c) ?? []), k]);
+}
 const JA_RUN = /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]+/gu;
+const KATAKANA = /[\u30a0-\u30ff]/;
 
+// Longest-match scan. A katakana term may not start in the middle of an unknown katakana word
+// (e.g. ログ inside プログラマ), only at a boundary or right after another matched term.
 export function translateJa(q: string): string {
-  if (!JA_RUN.test(q)) return q;
-  JA_RUN.lastIndex = 0;
-  let out = q;
-  for (const k of JA_KEYS) out = out.split(k).join(` ${JA_TERMS[k]} `);
+  if (!/[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/u.test(q)) return q;
+  let out = "";
+  let matchedEnd = 0;
+  for (let i = 0; i < q.length; ) {
+    const hit = (JA_BY_FIRST.get(q[i]) ?? []).find(
+      (k) => q.startsWith(k, i) && !(KATAKANA.test(k[0]) && i > 0 && i !== matchedEnd && KATAKANA.test(q[i - 1])),
+    );
+    if (hit) {
+      out += ` ${JA_TERMS[hit]} `;
+      i += hit.length;
+      matchedEnd = i;
+    } else out += q[i++];
+  }
   const stripped = out.replace(JA_RUN, " ").replace(/\s+/g, " ").trim();
   return stripped || q;
 }

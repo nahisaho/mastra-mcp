@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa } from "../src/db.js";
+import { searchExamples, getDoc, referenceFor, openDb, search, toFtsQuery, translateJa, JA_TERMS } from "../src/db.js";
 import { cleanMdx, ensureIndex, isStale, parseMdx, readGuides } from "../src/indexer.js";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -270,4 +270,15 @@ test("translateJa: reference areas and generic verbs", () => {
   assert.equal(t("ベクターストアのメタデータを取得"), "vector store metadata");
   assert.equal(t("ツール呼び出しの最大ステップ"), "tool calling max steps");
   assert.equal(t("レート制限"), "rate limit");
+});
+
+test("Japanese dictionary: >= 1000 terms, no single-character keys, longest match wins", () => {
+  const keys = Object.keys(JA_TERMS);
+  assert.ok(keys.length >= 1000, `only ${keys.length} terms`);
+  assert.deepEqual(keys.filter((k) => [...k].length < 2), []);
+  const t = (q: string) => translateJa(q).split(/\s+/).filter(Boolean).join(" ");
+  assert.equal(t("コードレビューのベストプラクティス"), "code review best practices");
+  assert.equal(t("プログラマ"), "プログラマ");
+  assert.equal(t("コードレビュー"), "code review");
+  assert.equal(t("人間参加のワークフロー再開"), "human in the loop resume workflow");
 });

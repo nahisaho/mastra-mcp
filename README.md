@@ -24,7 +24,7 @@ From a local checkout (`npm install && npm run build`), use `{ "command": "node"
 
 ## Japanese queries
 
-`search_docs` / `search_examples` accept Japanese queries (e.g. `ワークフローを中断して再開する方法`). Known terms are translated to English via a small built-in map (`JA_TERMS` in `src/db.ts`); unknown Japanese is dropped.
+`search_docs` / `search_examples` accept Japanese queries (e.g. `ワークフローを中断して再開する方法`). Known terms are translated to English via a built-in dictionary of 1,000+ terms (`src/ja-terms.ts`, `JA_TERMS` in `src/db.ts`; longest match wins); unknown Japanese is dropped.
 
 ## CLI
 
