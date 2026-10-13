@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
-import { type DocRow, findGuide, getDoc, listGuides, referenceFor, search, searchExamples } from "./db.js";
+import { type DocRow, findGuide, getDoc, listGuides, listPages, listSections, referenceFor, search, searchExamples } from "./db.js";
 import { listInstalled, loadRegistry, lookupModels, readInstalled, searchInstalled, sourceMapFor } from "./local.js";
 
 const MAX_CHARS = 20000;
@@ -16,7 +16,7 @@ const render = (d: DocRow, n: number) => `# ${d.title}\nPath: ${d.path}\nSource:
 
 const INSTRUCTIONS = [
   "Mastra APIs change quickly; do not trust training data. Verify against docs before writing Mastra code.",
-  "Priority: (1) installed_docs when node_modules/@mastra exists (matches the installed version), (2) search_docs / get_doc / get_api_reference / search_examples (latest published docs, may be ahead of the installed version).",
+  "Priority: (1) installed_docs when node_modules/@mastra exists (matches the installed version), (2) search_docs / get_doc / get_api_reference / search_examples (latest published docs, may be ahead of the installed version). Use list_topics to browse sections.",
   "Models use the 'provider/model-name' format. Call lookup_model to verify a provider key and model name instead of guessing.",
   "Mastra requires ES2022 modules (not CommonJS).",
   "On type errors, 'Cannot find module' or constructor errors, suspect outdated knowledge first: call get_guide('common-errors'). For v0.x -> v1 upgrades use get_guide('migration-guide'). For project setup use get_guide('create-mastra'); for the `mastra api` CLI, traces and Trace Intelligence use get_guide('mastra-api'), 'trace-query', 'trace-intelligence'. Call get_guide with no topic to list guides.",
@@ -127,6 +127,26 @@ export function createServer(db: DatabaseSync, ready: () => Promise<unknown>): M
       }
       const g = findGuide(db, topic);
       return g ? text(render(g, max_chars)) : text(`Guide not found: ${topic}. Call get_guide with no topic to list guides.`, true);
+    },
+  );
+
+  server.registerTool(
+    "list_topics",
+    {
+      description:
+        "Browse the indexed Mastra docs by section. No arguments: list sections with page counts (e.g. docs/workflows, reference/agents). With section (e.g. 'docs/workflows' or 'workflows'): list its pages; pass a path to get_doc.",
+      inputSchema: {
+        section: z.string().max(100).optional().describe("Section from the overview, e.g. 'docs/memory' or 'memory'"),
+        limit: z.number().int().min(1).max(200).default(50),
+      },
+    },
+    async ({ section, limit }) => {
+      await ready();
+      if (!section) return text(listSections(db).map((g) => `${g.section} (${g.count})`).join("\n"));
+      const { pages, total } = listPages(db, section, limit);
+      if (!total) return text(`No pages in section "${section}". Call list_topics with no arguments to list sections.`, true);
+      const more = total > pages.length ? `\n…${total - pages.length} more (raise limit)` : "";
+      return text(pages.map((d) => `${d.path} — ${d.title}${d.description ? `: ${d.description.slice(0, 120)}` : ""}`).join("\n") + more);
     },
   );
 

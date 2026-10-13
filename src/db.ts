@@ -354,6 +354,32 @@ export function referenceFor(db: DatabaseSync, symbol: string, limit: number): D
 
 const esc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
 
+export interface TopicGroup {
+  section: string;
+  count: number;
+}
+
+// Section = first two path segments, e.g. "docs/workflows" or "reference/agents"; one-segment-deep pages group under "<kind>/".
+export function listSections(db: DatabaseSync): TopicGroup[] {
+  const counts = new Map<string, number>();
+  for (const r of db.prepare("SELECT path FROM docs").all() as { path: string }[]) {
+    const p = r.path.split("/");
+    const key = p.length > 2 ? `${p[0]}/${p[1]}` : `${p[0]}/`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts].map(([section, count]) => ({ section, count })).sort((a, b) => a.section.localeCompare(b.section));
+}
+
+// section: "docs/workflows" (exact prefix) or "workflows" (matches that section under every kind).
+export function listPages(db: DatabaseSync, section: string, limit: number): { pages: { path: string; title: string; description: string }[]; total: number } {
+  const s = section.replace(/^\/+|\/+$/g, "").toLowerCase();
+  const rows = (db.prepare("SELECT path, title, description FROM docs ORDER BY path").all() as { path: string; title: string; description: string }[]).filter((d) => {
+    const p = d.path.toLowerCase();
+    return p === s || p.startsWith(s + "/") || p.split("/")[1] === s;
+  });
+  return { pages: rows.slice(0, limit), total: rows.length };
+}
+
 export function listGuides(db: DatabaseSync): { path: string; title: string; description: string }[] {
   return db.prepare("SELECT path, title, description FROM docs WHERE kind='guide' ORDER BY path").all() as unknown as {
     path: string;

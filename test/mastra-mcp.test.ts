@@ -313,3 +313,31 @@ test("ensureIndex: pinned index is never stale, records source ref, mismatch ref
   assert.equal(ensureIndex(db, latest, false, null).refreshed, false);
   assert.equal(calls, 3);
 });
+
+test("list_topics: sections overview, section pages, limit and unknown section", async () => {
+  const db = openDb(":memory:");
+  const page = (path: string, title: string) => parseMdx(path, `---\ntitle: ${title}\ndescription: about ${title}\n---\nbody`);
+  ensureIndex(db, () => [
+    page("docs/workflows/overview", "Workflows"),
+    page("docs/workflows/suspend-and-resume", "Suspend"),
+    page("docs/memory/overview", "Memory"),
+    page("docs/index", "Intro"),
+    page("reference/workflows/workflow", "Workflow class"),
+    page("guides/mastra/common-errors", "Errors"),
+  ]);
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await createServer(db, async () => {}).connect(a);
+  const client = new Client({ name: "t", version: "0" });
+  await client.connect(b);
+  const call = async (args: Record<string, unknown>) =>
+    (await client.callTool({ name: "list_topics", arguments: args })) as { content: { text: string }[]; isError?: boolean };
+  const all = (await call({})).content[0].text.split("\n");
+  assert.deepEqual(all, ["docs/ (1)", "docs/memory (1)", "docs/workflows (2)", "guides/mastra (1)", "reference/workflows (1)"]);
+  const exact = (await call({ section: "docs/workflows" })).content[0].text;
+  assert.match(exact, /docs\/workflows\/suspend-and-resume — Suspend: about Suspend/);
+  assert.ok(!exact.includes("reference/"));
+  const bare = (await call({ section: "workflows" })).content[0].text;
+  assert.match(bare, /reference\/workflows\/workflow/);
+  assert.match((await call({ section: "workflows", limit: 1 })).content[0].text, /…2 more/);
+  assert.equal((await call({ section: "nope" })).isError, true);
+});
