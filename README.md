@@ -39,4 +39,6 @@ npm run build     # compile src -> dist
 npm pack --dry-run
 ```
 
+Ranking regressions are guarded by golden tests (`test/golden.json`, run against the real-page subset `test/fixtures/docs-subset.json`). After intentionally changing ranking, run `mastra-mcp refresh` with `MASTRA_MCP_DB=/tmp/golden.db`, then `MASTRA_MCP_DB=/tmp/golden.db npm run fixture` to regenerate the fixture.
+
 `npm publish` runs `prepublishOnly` (tests + build) and ships only `dist`, `README.md` and `LICENSE`.

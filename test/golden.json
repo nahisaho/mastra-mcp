@@ -1,0 +1,19 @@
+[
+  { "tool": "api", "query": "createWorkflow", "first": "reference/workflows/workflow" },
+  { "tool": "api", "query": "createStep", "first": "reference/workflows/step" },
+  { "tool": "api", "query": "createTool", "first": "reference/tools/create-tool", "excludes": ["reference/configuration"] },
+  { "tool": "api", "query": "Memory", "first": "reference/memory/memory-class" },
+  { "tool": "api", "query": "Mastra", "first": "reference/core/mastra-class" },
+  { "tool": "api", "query": "Agent", "first": "reference/agents/agent" },
+  { "tool": "api", "query": "createRun", "first": "reference/workflows/workflow-methods/create-run" },
+  { "tool": "api", "query": "MCPClient", "first": "reference/tools/mcp-client" },
+  { "tool": "api", "query": "LibSQLStore", "includes": ["reference/vectors/libsql", "integrations/databases/libsql"], "top": 2 },
+  { "tool": "api", "query": "PostgresStore", "first": "integrations/databases/postgresql" },
+  { "tool": "search", "query": "agent generate structured output tools model", "first": "docs/agents/structured-output", "excludes": ["reference/agents/generateLegacy"], "top": 3 },
+  { "tool": "search", "query": "workflow suspend resume", "includes": ["docs/workflows/suspend-and-resume"], "top": 5 },
+  { "tool": "search", "query": "generate output legacy", "includes": ["reference/agents/generateLegacy"], "top": 3 },
+  { "tool": "examples", "query": "createTool", "lang": "ts", "first": "reference/tools/create-tool" },
+  { "tool": "examples", "query": "Memory working memory", "lang": "ts", "first": "docs/memory/working-memory" },
+  { "tool": "examples", "query": "workflow suspend resume", "lang": "ts", "includes": ["docs/workflows/suspend-and-resume"], "top": 3 },
+  { "tool": "guide", "query": "Cannot find module Property does not exist", "first": "guides/mastra/common-errors" }
+]
