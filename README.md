@@ -13,15 +13,53 @@ MCP server (like Context7) that gives coding agents up-to-date [Mastra](https://
 - On first start it sparse-clones the skills repo too and sparse-clones `docs/src/content/en` from `mastra-ai/mastra` (needs `git`), indexes it in SQLite FTS5 and refreshes every 24h. If a refresh fails, the old index is kept.
 - Requires Node.js >= 22.16 and `git`. Index location: `~/.cache/mastra-mcp/index.db` (override with `MASTRA_MCP_DB`).
 
-## Usage
+## Install / deploy
 
-MCP client config (after publishing to npm):
+Pick one. All variants run over stdio and need Node.js >= 22.16 and `git` (the container bundles both).
+
+| Method | Command |
+|---|---|
+| npx (after npm publish) | `npx -y mastra-mcp` |
+| Global install | `npm install -g mastra-mcp`, then `mastra-mcp` |
+| Local checkout | `git clone <repo> && cd mastra-mcp && npm ci && npm run build`, then `node dist/index.js` |
+| Container | see [Container](#container) |
+
+The first start builds the docs index (about 5 s, needs network access to GitHub); later starts reuse it.
+
+## MCP client configuration
+
+The server entry is the same everywhere; only the config file differs. Change `command`/`args` to match your deploy method (npx shown).
 
 ```json
 { "mcpServers": { "mastra": { "command": "npx", "args": ["-y", "mastra-mcp"] } } }
 ```
 
-From a local checkout (`npm install && npm run build`), use `{ "command": "node", "args": ["<repo>/dist/index.js"] }`.
+| Client | Where |
+|---|---|
+| Claude Code | `claude mcp add mastra -- npx -y mastra-mcp` (or `.mcp.json` in the project) |
+| Claude Desktop | `claude_desktop_config.json` (`mcpServers`) |
+| Cursor | `.cursor/mcp.json` or `~/.cursor/mcp.json` (`mcpServers`) |
+| VS Code | `.vscode/mcp.json`; the top-level key is `servers`, not `mcpServers` |
+| GitHub Copilot CLI | `~/.copilot/mcp-config.json` (`mcpServers`) |
+
+Variants:
+
+```json
+{ "mcpServers": { "mastra": { "command": "node", "args": ["/path/to/mastra-mcp/dist/index.js"] } } }
+```
+
+```json
+{ "mcpServers": { "mastra": { "command": "docker", "args": ["run", "-i", "--rm", "-v", "mastra-mcp-data:/data", "mastra-mcp"] } } }
+```
+
+Pin the docs version or move the index with `env`:
+
+```json
+{ "mcpServers": { "mastra": { "command": "npx", "args": ["-y", "mastra-mcp"],
+  "env": { "MASTRA_MCP_VERSION": "1.70.0", "MASTRA_MCP_DB": "/path/to/index.db" } } } }
+```
+
+Run the client from the project directory so `installed_docs` and `MASTRA_MCP_VERSION=auto` can see `node_modules/@mastra/core`. Check the setup with `mastra-mcp status`.
 
 ## Japanese queries
 
@@ -47,7 +85,7 @@ docker build -t mastra-mcp .          # or: wslc build -t mastra-mcp .
 docker run -i --rm -v mastra-mcp-data:/data mastra-mcp
 ```
 
-MCP over stdio needs `-i` and no TTY. The `/data` volume caches the docs index (built on first start; needs network access to GitHub). MCP client config: `{"command": "docker", "args": ["run", "-i", "--rm", "-v", "mastra-mcp-data:/data", "mastra-mcp"]}` (use `wslc` instead of `docker` on WSL).
+MCP over stdio needs `-i` and no TTY. The `/data` volume caches the docs index (built on first start; needs network access to GitHub). MCP client config: `{"command": "docker", "args": ["run", "-i", "--rm", "-v", "mastra-mcp-data:/data", "mastra-mcp"]}` (use `wslc` instead of `docker` on WSL). In a container, `installed_docs` cannot see the host `node_modules` unless you mount the project and set the working directory (`-v <project>:/work -w /work`).
 
 ## Development
 
