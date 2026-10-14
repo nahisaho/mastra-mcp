@@ -4,7 +4,7 @@ MCP server (like Context7) that gives coding agents up-to-date [Mastra](https://
 
 - Tools:
   - `installed_docs`: docs embedded in the project's `node_modules/@mastra/*/dist/docs` (exact installed version; list / search / read / SOURCE_MAP type lookup). Use first when packages are installed.
-  - `search_docs`, `get_doc`, `get_api_reference`: latest published docs (results include `mastra.ai/...md` source URLs). Legacy/deprecated pages are ranked after current ones unless the query mentions them.
+  - `search_docs`, `get_doc`, `get_api_reference`: latest published docs (results include `mastra.ai/...md` source URLs). Legacy/deprecated pages are ranked after current ones unless the query mentions them. `search_docs` also appends an excerpt of the top page (`excerpt_chars`, default 3000, `0` disables) so a single call is usually enough to start coding.
   - `search_examples`: code blocks from the docs (filter by `lang`), ranked by exact identifiers, heading and page-name matches.
   - `list_topics`: browse the indexed docs by section (no arguments: sections with page counts; `section`: its pages).
   - `get_guide`: curated guides from the official [mastra-ai/skills](https://github.com/mastra-ai/skills) repo (Apache-2.0), fetched at index time: common errors, v0.x→v1 migration, project setup, core concepts, `mastra api` CLI, trace queries, Trace Intelligence, Factory. Also searchable with `search_docs` `kind=guide`.
