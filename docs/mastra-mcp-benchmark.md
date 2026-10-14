@@ -145,7 +145,7 @@ ignorePublish: false
 
 - **全アプリで同じ形に収束しました。** どのモデルも、アプリ 1 では `foreach` + `branch` + `suspend`/`resume` + `bail`、アプリ 2 では `MDocument` + `LibSQLVector`、アプリ 3 と 4 では `MockLanguageModelV3`、アプリ 5 では `parallel` + ネスト + `dountil` を使いました。API の取り違え(v0 の `RuntimeContext` や `context` 引数など)は、この課題では見られませんでした。
 - **モデルによるコストの差が最大の要因でした。** 同じ課題でも、claude-haiku-5.5 は 5 アプリで 10 クレジット前後、gpt-5.3-codex と gpt-5.6-sol は 230〜280 クレジットでした。MCP の有無による差(数%〜20%)は、モデル間の差(最大 30 倍以上)よりずっと小さいです。
-- **MCP の使われ方に差がありました。** mastra-mcp は呼び出し回数が多く(1 構成あたり 7〜74 回)でした。Context7 は 11〜24 回でした。
+- **MCP の使われ方に差がありました。** mastra-mcp は 1 構成あたり 7〜74 回の呼び出しでした。Context7 は 11〜24 回でした。
 - **唯一の失敗**(gpt-5.6-luna + Context7、アプリ 5)は、`log` の export 形式を課題文どおりにできなかったことが原因です。Mastra の使い方ではなく、課題文の読み違いです。
 
 ## 注意点と限界
