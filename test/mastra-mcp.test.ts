@@ -53,6 +53,8 @@ test("MCP tools end-to-end", async () => {
 
   const s = await call("search_docs", { query: "agent tools" });
   assert.match(s.content[0].text, /docs\/agents\/overview/);
+  assert.match(s.content[0].text, /Excerpt of the top result/);
+  assert.doesNotMatch((await call("search_docs", { query: "agent tools", excerpt_chars: 0 })).content[0].text, /Excerpt of the top result/);
   const d = await call("get_doc", { path: "docs/agents/overview" });
   assert.match(d.content[0].text, /Agent class/);
   assert.equal((await call("get_doc", { path: "nope" })).isError, true);

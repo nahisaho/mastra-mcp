@@ -20,6 +20,8 @@ const INSTRUCTIONS = [
   "Priority: (1) installed_docs when node_modules/@mastra exists (matches the installed version), (2) search_docs / get_doc / get_api_reference / search_examples (latest published docs, may be ahead of the installed version). Use list_topics to browse sections.",
   "Models use the 'provider/model-name' format. Call lookup_model to verify a provider key and model name instead of guessing.",
   "Mastra requires ES2022 modules (not CommonJS).",
+  "search_docs shows only short snippets: read the top page (the excerpt it appends, or get_doc) before writing code. Do not reimplement Mastra features (workflow engine, storage, memory, suspend/resume) yourself; if an API seems missing, search again with the exact feature name or use get_api_reference ('Mastra', 'createWorkflow', 'LibSQLStore').",
+  "Workflows: createStep/createWorkflow from '@mastra/core/workflows'; register with new Mastra({ workflows, storage }) and run mastra.getWorkflow(key).createRun().start({ inputData }). See docs/workflows/{overview,control-flow,workflow-state,suspend-and-resume,snapshots}.",
   "On type errors, 'Cannot find module' or constructor errors, suspect outdated knowledge first: call get_guide('common-errors'). For v0.x -> v1 upgrades use get_guide('migration-guide'). For project setup use get_guide('create-mastra'); for the `mastra api` CLI, traces and Trace Intelligence use get_guide('mastra-api'), 'trace-query', 'trace-intelligence'. Call get_guide with no topic to list guides.",
 ].join("\n");
 
@@ -30,20 +32,21 @@ export function createServer(db: DatabaseSync, ready: () => Promise<unknown>): M
     "search_docs",
     {
       description:
-        "Search the latest Mastra documentation (agents, workflows, memory, tools, RAG, MCP, deployment, ...). Returns matching page paths; pass a path to get_doc.",
+        "Search the latest Mastra documentation (agents, workflows, memory, tools, RAG, MCP, deployment, ...). Returns matching page paths with snippets, plus an excerpt of the top page; pass a path to get_doc for the full page.",
       inputSchema: {
         query: z.string().min(1).max(500).describe("Keywords, e.g. 'workflow suspend resume'"),
         kind: z.enum(["docs", "reference", "guide"]).optional().describe("docs, API reference, or skill guides (errors, migration, CLI)"),
         limit: z.number().int().min(1).max(20).default(5),
+        excerpt_chars: z.number().int().min(0).max(8000).default(3000).describe("Characters of the top page to append (0 disables)"),
       },
     },
-    async ({ query, kind, limit }) => {
+    async ({ query, kind, limit, excerpt_chars }) => {
       await ready();
       const hits = search(db, query, kind, limit);
       if (!hits.length) return text(`No results for "${query}".`);
-      return text(
-        hits.map((h, i) => `${i + 1}. ${h.title}\n   path: ${h.path} (${h.kind})\n   url: ${srcLine(h.path)}\n   ${h.description}\n   ${h.snippet}`).join("\n\n"),
-      );
+      const list = hits.map((h, i) => `${i + 1}. ${h.title}\n   path: ${h.path} (${h.kind})\n   url: ${srcLine(h.path)}\n   ${h.description}\n   ${h.snippet}`).join("\n\n");
+      const top = excerpt_chars > 0 ? getDoc(db, hits[0].path) : undefined;
+      return text(top ? `${list}\n\n---\nExcerpt of the top result (use get_doc for the rest):\n\n${render(top, excerpt_chars)}` : list);
     },
   );
 
